@@ -15,6 +15,11 @@
         <script src="../../lib/requirejs/require.js" type="text/javascript"></script>
         <script src="/requirejs.conf.js" type="text/javascript"></script>
         <script>
+            requirejs({
+                baseUrl: "/"
+            });
+        </script>
+        <script>
         require([
             'streamhub-sdk/content/views/content-list-view',
             'streamhub-sdk/collection',
@@ -39,6 +44,13 @@
                 showMore: 10,
                 el: document.getElementById("listView")
             });
+            
+            // Order based on order streamed in
+            listView.comparator = function (a, b) {
+                var aDate = a.createdAt,
+                    bDate = b.createdAt;
+                return bDate - aDate;
+            };
 
             var collection = window.collection =  new Collection(opts);
 
@@ -46,13 +58,13 @@
             
             var featuredArchive = featuredContents.createArchive();
             
-            var inserter = window.inserter = Insert(featuredArchive);//.every(2);
+            var inserter = window.inserter = Insert(featuredArchive).every(3);
             
             var collection = window.collection =  new Collection(opts2);
             
             var archive = window.archive = collection.createArchive()
             
-            var tmp = archive.pipe(inserter);
+            var tmp = archive.pipe(inserter, {end: false});
             tmp.pipe(listView.more);
             //archive.pipe(listView.more);
         });
