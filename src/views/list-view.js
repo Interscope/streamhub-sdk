@@ -19,8 +19,9 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
     /**
      * A simple View that displays Content in a list (`<ul>` by default).
      *
-     * @param opts {Object} A set of options to config the view with
-     * @param opts.el {HTMLElement} The element in which to render the streamed content
+     * @param [opts] {Object} A set of options to config the view with
+     * @param [opts.el] {HTMLElement} The element in which to render the streamed content
+     * @param [opts.comparator] {function(view, view): number}
      * @exports streamhub-sdk/views/list-view
      * @constructor
      */
@@ -32,6 +33,9 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
         View.call(this, opts);
         Writable.call(this, opts);
 
+        if (opts.comparator) {
+            this.comparator = opts.comparator;
+        }
         this._moreAmount = opts.showMore || 50;
         this.more = opts.more || this._createMoreStream(opts);
         this.showMoreButton = opts.showMoreButton || this._createShowMoreButton(opts);
@@ -102,37 +106,64 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
     /**
      * Comparator function to determine ordering of Views.
      * Your subclass should implement this if you want ordering
-     * @private
      * @param a {view}
      * @param b {view}
      * @returns {Number} < 0 if a before b, 0 if same ordering, > 0 if b before a
      */
     ListView.prototype.comparator = null;
+    
+    /**
+     * Returns the index where newView should be inserted.
+     * Requires this.comparator to be defined.
+     * @private
+     * @param newView {view} View that will be added.
+     * @param [array] {[]} Array to search through. Defaults to this.views.
+     * @return {!number}
+     */
+    ListView.prototype._binarySearch = function(newView, array) {
+        array = array || this.views;
+        if (!this.comparator) {
+            throw new Error("Tried to _binarySearch without this.comparator.");
+        }
+        
+        var low = 0, high = array.length, mid, comp;
+        while (low < high) {
+            mid = (low + high) >>> 1;
+            comp = array[mid];
+            //TODO (joao) if comp.indexed, then ignore and try again
+            this.comparator(comp, newView) < 0 ? low = mid + 1 : high = mid;
+        }
+        return low;
+    };
 
 
     /**
      * Add a view to the ListView
      *     insert the newView into this.el according to this.comparator
      * @param newView {View} A View to add to the ListView
+     * @param [index] {number} location for the new view
      * @returns the newly added View
      */
-    ListView.prototype.add = function(newView) {
-        log("add", newView);
+    ListView.prototype.add = function(newView, index) {
+        log("add", newView, index);
 
         if ( ! newView) {
             log("Called add with a falsy parameter, returning");
             return;
         }
-
-        // Push and sort. #TODO Insert in sorted order
-        if (this.views.indexOf(newView) === -1) {
-            this.views.push(newView);
+        
+        if (typeof(index) !== 'number' || Math.abs(index) > this.views.length) {
+            if (this.comparator) {
+                index = this._binarySearch(newView);
+            } else {
+                index = 0;//TODO (joao) Maybe this.views.length?
+            }
+        } else {
+            newView.indexed = true;
         }
-
-        if (this.comparator) {
-            this.views.sort(this.comparator);
-        }
-
+        
+        this.views.splice(index, 0, newView);
+        
         // Add to DOM
         this._insert(newView);
 
@@ -208,6 +239,7 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
         if (typeof numToShow === 'undefined') {
             numToShow = this._moreAmount;
         }
+//        debugger
         this.more.setGoal(numToShow);
     };
 
