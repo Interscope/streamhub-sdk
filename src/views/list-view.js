@@ -125,15 +125,41 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
         if (!this.comparator) {
             throw new Error("Tried to _binarySearch without this.comparator.");
         }
-        
         var low = 0, high = array.length, mid, comp;
         while (low < high) {
+//            debugger
             mid = (low + high) >>> 1;
             comp = array[mid];
-            //TODO (joao) if comp.indexed, then ignore and try again
-            this.comparator(comp, newView) < 0 ? low = mid + 1 : high = mid;
+            
+            if (comp.indexed) {
+                var oldMid = mid;//Might need this later
+                while (comp.indexed && mid > low) {
+                //Move lower looking for a comparable view
+                    comp = array[--mid];
+                }
+                
+//                if (comp.indexed) {
+//                //If no comparable views were found, try higher
+//                    mid = oldMid;
+//                    do {
+//                        comp = array[++mid];
+//                    } while (comp.indexed && mid < high - 1);
+//                }
+                
+                if (comp.indexed) {
+                //If nothing was found, just add it to the beginning of this segment
+//                    low = high;
+                    high = low
+                } else {
+                //Set new low and start again
+//                    low = mid;
+                    high = mid;
+                }
+            } else {
+                this.comparator(comp, newView) < 0 ? low = mid + 1 : high = mid;
+            }
         }
-        return low;
+        return Math.max(0, low);
     };
 
 
@@ -239,7 +265,6 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
         if (typeof numToShow === 'undefined') {
             numToShow = this._moreAmount;
         }
-//        debugger
         this.more.setGoal(numToShow);
     };
 
