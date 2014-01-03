@@ -105,7 +105,7 @@ debug, Writable, ContentView, More, ShowMoreButton, Pond) {
         this.feature.on('readable', function () {
             var content;
             while (content = self.feature.read()) {
-                self.add(content, 0);
+                self.add(content, self.feature._index);
             }
         });
     };
@@ -169,7 +169,7 @@ debug, Writable, ContentView, More, ShowMoreButton, Pond) {
         this.feature._count++;
         if (this.feature._count == this.feature._interval) {
             this.feature._count = -1;
-            this.feature.setGoal(1);
+            this.feature.setGoal(1, this.views.indexOf(contentView) || 0);
         };
         return retVal;
     };

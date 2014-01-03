@@ -127,39 +127,26 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
         }
         var low = 0, high = array.length, mid, comp;
         while (low < high) {
-//            debugger
             mid = (low + high) >>> 1;
             comp = array[mid];
             
             if (comp.indexed) {
-                var oldMid = mid;//Might need this later
+            //Try to get a comp that isn't indexed
                 while (comp.indexed && mid > low) {
                 //Move lower looking for a comparable view
                     comp = array[--mid];
                 }
+            }
                 
-//                if (comp.indexed) {
-//                //If no comparable views were found, try higher
-//                    mid = oldMid;
-//                    do {
-//                        comp = array[++mid];
-//                    } while (comp.indexed && mid < high - 1);
-//                }
-                
-                if (comp.indexed) {
-                //If nothing was found, just add it to the beginning of this segment
-//                    low = high;
-                    high = low
-                } else {
-                //Set new low and start again
-//                    low = mid;
-                    high = mid;
-                }
+            if (comp.indexed) {
+            //If nothing was found, just add it to the beginning of this segment
+                high = low;
             } else {
+            //Set new low or high and start again
                 this.comparator(comp, newView) < 0 ? low = mid + 1 : high = mid;
             }
         }
-        return Math.max(0, low);
+        return Math.max(0, low);//Incase of miscalculations, use max() to assure minimum of 0
     };
 
 
@@ -303,10 +290,13 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
      */
     ListView.prototype._pipeMore = function () {
         var self = this;
+        var views = this.views;
         this.more.on('readable', function () {
             var content;
             while (content = self.more.read()) {
+//                debugger
                 self.add(content);
+//                self.add(content, views.length);
             }
         });
     };
