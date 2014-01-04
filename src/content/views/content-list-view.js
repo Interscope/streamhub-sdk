@@ -8,10 +8,9 @@ define([
     'stream/writable',
     'streamhub-sdk/content/views/content-view',
     'streamhub-sdk/views/streams/more',
-    'streamhub-sdk/views/show-more-button',
-    'streamhub-sdk/views/streams/pond'],
+    'streamhub-sdk/views/show-more-button'],
 function($, ListView, ContentViewFactory, AttachmentGalleryModal, inherits,
-debug, Writable, ContentView, More, ShowMoreButton, Pond) {
+debug, Writable, ContentView, More, ShowMoreButton) {
     'use strict';
 
     var log = debug('streamhub-sdk/content/views/content-list-view');
@@ -41,9 +40,6 @@ debug, Writable, ContentView, More, ShowMoreButton, Pond) {
         this._stash = opts.stash || this.more;
         this._maxVisibleItems = opts.maxVisibleItems || 50;
         this._bound = true;
-//        this.feature = opts.feature || this._createFeatureStream(opts);//TODO (joao) Generalize
-        
-//        this._pipeFeature();//TODO (joao) Generalize
 
         this.contentViewFactory = opts.contentViewFactory || new ContentViewFactory();
     };
@@ -83,33 +79,6 @@ debug, Writable, ContentView, More, ShowMoreButton, Pond) {
         }, this));
     };
     
-    /**
-     * TODO (joao) Generalize
-     * Creates and returns a stream, designed to be used a featured content
-     * @param [opts] {Object}
-     * @returns {Readable}
-     */
-    ContentListView.prototype._createFeatureStream = function (opts) {
-        opts = opts || {};
-        return new Pond({
-            highWaterMark: 0,
-            goal: 0
-        });
-    };
-    
-    /**
-     * TODO (joao) Generalize
-     */
-    ContentListView.prototype._pipeFeature = function () {
-        var self = this;
-        this.feature.on('readable', function () {
-            var content;
-            while (content = self.feature.read()) {
-                self.add(content, self.feature._index);
-            }
-        });
-    };
-
     /**
      * Comparator function to determine ordering of ContentViews.
      * ContentView elements indexes in this.el will be ordered by this
