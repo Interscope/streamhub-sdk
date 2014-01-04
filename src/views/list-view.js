@@ -294,9 +294,7 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
         this.more.on('readable', function () {
             var content;
             while (content = self.more.read()) {
-//                debugger
                 self.add(content);
-//                self.add(content, views.length);
             }
         });
     };

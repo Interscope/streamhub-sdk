@@ -41,9 +41,9 @@ debug, Writable, ContentView, More, ShowMoreButton, Pond) {
         this._stash = opts.stash || this.more;
         this._maxVisibleItems = opts.maxVisibleItems || 50;
         this._bound = true;
-        this.feature = opts.feature || this._createFeatureStream(opts);//TODO (joao) Generalize
+//        this.feature = opts.feature || this._createFeatureStream(opts);//TODO (joao) Generalize
         
-        this._pipeFeature();//TODO (joao) Generalize
+//        this._pipeFeature();//TODO (joao) Generalize
 
         this.contentViewFactory = opts.contentViewFactory || new ContentViewFactory();
     };
@@ -141,36 +141,30 @@ debug, Writable, ContentView, More, ShowMoreButton, Pond) {
      * @returns the newly created ContentView
      */
     ContentListView.prototype.add = function(content, index) {
+        var retVal;
         var contentView = content.el ? content : this.getContentView(content); //duck type for ContentView
 
         log("add", content);
 
-        if (contentView) {
-            return ListView.prototype.add.call(this, contentView, index);
+        if (!contentView) {
+            contentView = this.createContentView(content);
+            
+            if (this._bound && ! this._hasVisibleVacancy()) {
+                var viewToRemove = this.views[this.views.length-1];
+                
+                // Ensure .more won't let more through right away,
+                // we already have more than we want.
+                this.more.setGoal(0);
+                // Unshift content to more stream
+                this.saveForLater(viewToRemove.content);
+                
+                // Remove non visible view
+                this.remove(viewToRemove);
+            }
         }
-
-        contentView = this.createContentView(content);
-
-        if (this._bound && ! this._hasVisibleVacancy()) {
-            var viewToRemove = this.views[this.views.length-1];
-
-            // Ensure .more won't let more through right away,
-            // we already have more than we want.
-            this.more.setGoal(0);
-            // Unshift content to more stream
-            this.saveForLater(viewToRemove.content);
-
-            // Remove non visible view
-            this.remove(viewToRemove);
-        }
-
-        var retVal = ListView.prototype.add.call(this, contentView, index);
-        //TODO (joao) These things can't live here
-        this.feature._count++;
-        if (this.feature._count == this.feature._interval) {
-            this.feature._count = -1;
-            this.feature.setGoal(1, this.views.indexOf(contentView) || 0);
-        };
+        
+        retVal = ListView.prototype.add.call(this, contentView, index);
+        this.emit('added', contentView);
         return retVal;
     };
 
