@@ -143,7 +143,11 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
                 high = low;
             } else {
             //Set new low or high and start again
-                this.comparator(comp, newView) < 0 ? low = mid + 1 : high = mid;
+                if (this.comparator(comp, newView) < 0) {
+                    low = mid + 1;
+                } else {
+                    high = mid;
+                }
             }
         }
         return Math.max(0, low);//Incase of miscalculations, use max() to assure minimum of 0
@@ -290,7 +294,6 @@ debug, Writable, ContentView, More, ShowMoreButton, ListViewTemplate) {
      */
     ListView.prototype._pipeMore = function () {
         var self = this;
-        var views = this.views;
         this.more.on('readable', function () {
             var content;
             while (content = self.more.read()) {

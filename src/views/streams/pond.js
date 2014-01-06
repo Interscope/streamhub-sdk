@@ -1,8 +1,9 @@
 define([
     'inherits',
     'stream/duplex',
+    'streamhub-sdk/content/views/content-list-view',
     'streamhub-sdk/debug'],
-function (inherits, Duplex, debug) {
+function (inherits, Duplex, ContentListView, debug) {
     'use strict';
 
 
@@ -26,7 +27,7 @@ function (inherits, Duplex, debug) {
         this._interval = opts.interval || 1;
         this._count = 0;
         this._previousWrite = null;
-        this._writable = null;
+        this._contentListView = null;
         Duplex.call(this, opts);
     };
     inherits(Pond, Duplex);
@@ -38,25 +39,30 @@ function (inherits, Duplex, debug) {
      */
     Pond.prototype.SCOOPS = 1;
     
-    
-    Pond.prototype.pipish = function(writable) {
-        this._writable = writable;
-        this._writable.on('added', function (contentView) {
+    /**
+     * Registers a ContentListView or subclass. Listens for added contentViews and
+     * pushes at the specified intervals.
+     * @param contentListView {ContentListView}
+     * @param [opts} {Object}
+     */
+    Pond.prototype.pipish = function(contentListView, opts) {
+        this._contentListView = contentListView;
+        this._contentListView.on('added', function (contentView) {
             if (!contentView) {
                 return;
             }
             
-            if (contentView.content != this._previousWrite) {
+            if (contentView.content !== this._previousWrite) {
                 this._count++;
             }
             
             if (this._count === this._interval) {
                 this._count = 0;
-                var index = this._writable.views.indexOf(contentView) || 0;
+                var index = this._contentListView.views.indexOf(contentView) || 0;
                 this.setGoal(undefined, index);
             }
         }.bind(this));
-    }
+    };
 
     /**
      * Let more items pass through.
@@ -164,7 +170,7 @@ function (inherits, Duplex, debug) {
             this._scoops--;
 //            this.push(this._stack.pop());
             this._previousWrite = this._stack.pop();
-            this._writable.add(this._previousWrite, this._index);
+            this._contentListView.add(this._previousWrite, this._index);
         }
 
         // If there was no data, or we just pushed the last bit,
