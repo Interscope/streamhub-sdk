@@ -43,8 +43,8 @@
             };
             
             var listView = window.view = new ListView({
-                initial: 3,
-                showMore: 2,
+                initial: 10,
+                showMore: 5,
                 el: document.getElementById("listView")
             });
 
@@ -60,7 +60,12 @@
             
             archive.pipe(listView.more);
             
-            featuredArchive.pipe(new Pond()).pipish(listView);
+            var pond = new Pond({
+                interval: 3,
+            	scoops: 1
+            });
+            
+            featuredArchive.pipe(pond).pipish(listView);
         });
         </script>
     </body>

@@ -11,13 +11,16 @@ function (inherits, Duplex, ContentListView, debug) {
 
 
     /**
-     * A Duplex stream (Readable & Writable) that only passes through
-     * the number of items it is instructed to.
+     * A Duplex stream (Readable & Writable) that directly adds items to a
+     * ContentListView after specified intervals of that view receiving
+     * adding content.
      * Pond also maintains a LIFO stack such that previously emitted Content can
      * be stashed back into Pond so that it is re-read out later when needed.
      * @constructor
-     * @param opts {object}
-     * @param [opts.goal=0] {number} The initial amount to let through
+     * @param [opts] {object}
+     * @param [opts.scoops] {number} The default number of items to add.
+     * @param [opts.interval] {number} The number of items that need to be
+     *      added to the view before this Pond adds another.
      */
     var Pond = function (opts) {
         opts = opts || {};
@@ -26,7 +29,7 @@ function (inherits, Duplex, ContentListView, debug) {
         this._requestMore = null;
         this._interval = opts.interval || 1;
         this._count = 0;
-        this._previousWrite = null;
+        this._written = [];
         this._contentListView = null;
         Duplex.call(this, opts);
     };
@@ -41,8 +44,8 @@ function (inherits, Duplex, ContentListView, debug) {
     
     /**
      * Registers a ContentListView or subclass. Listens for added contentViews and
-     * pushes at the specified intervals.
-     * @param contentListView {ContentListView}
+     * pushes an addition at the specified interval.
+     * @param contentListView {!ContentListView}
      * @param [opts} {Object}
      */
     Pond.prototype.pipish = function(contentListView, opts) {
@@ -52,34 +55,25 @@ function (inherits, Duplex, ContentListView, debug) {
                 return;
             }
             
-            if (contentView.content !== this._previousWrite) {
+            var index = this._written.indexOf(contentView.content);
+            if (this._written.indexOf(contentView.content) < 0) {
                 this._count++;
+            } else {
+                this._written.splice(index, 1);
             }
             
             if (this._count === this._interval) {
                 this._count = 0;
-                var index = this._contentListView.views.indexOf(contentView) || 0;
-                this.setGoal(undefined, index);
+                //Get index to specify where to add new content
+                this._index = this._contentListView.views.indexOf(contentView) || 0;
+                this.scoop();
             }
         }.bind(this));
     };
 
     /**
-     * Let more items pass through.
-     * This sets the goal of the stream to the provided number.
-     * @param newGoal {number} The number of items this stream should
-     * @param index {number} Index where the last item was inserted
-     *     let through before holding again.
-     */
-    Pond.prototype.setGoal = function (newGoal, index) {
-        this._index = index;
-        this.scoop(newGoal);
-    };
-    
-    
-    /**
-     * Lets 1 or the specified number of items pass through.
-     * @param [n] {number=}
+     * Adds 1 or the specified number of items.
+     * @param [n] {number}
      */
     Pond.prototype.scoop = function (n) {
         this._scoops = n || this.SCOOPS;
@@ -91,15 +85,7 @@ function (inherits, Duplex, ContentListView, debug) {
 
 
     /**
-     * Get the number of objects the stream is waiting for to reach its goal
-     */
-    Pond.prototype.getGoal = function () {
-        return this._scoops;
-    };
-
-
-    /**
-     * stack Content that should be re-emitted later in last-in-first-out
+     * Stack Content that should be re-emitted later in last-in-first-out
      * fashion. stacked stuff is read out before written stuff
      * @param obj {Object} An object to stack, that you may want back later
      */
@@ -110,8 +96,8 @@ function (inherits, Duplex, ContentListView, debug) {
 
     /**
      * Required by Duplex subclasses.
-     * This ensures that once the goal is reached, no more content
-     * passes through.
+     * This ensures that once the scoop count is reached, no more content
+     * is pushed.
      * @private
      */
     Pond.prototype._write = function (chunk, doneWriting) {
@@ -158,7 +144,7 @@ function (inherits, Duplex, ContentListView, debug) {
 
 
     /**
-     * Fetch data from the internal stack (sync) and push it.
+     * Fetch data from the internal stack (sync) and add it.
      * Or, if there is nothing in the stack, request more from the Writable
      * side of the duplex, which will eventually call this again.
      * @private
@@ -166,11 +152,11 @@ function (inherits, Duplex, ContentListView, debug) {
     Pond.prototype._fetchAndPush = function () {
         // If there's data in the stack, pop, push it along, & decrement goal
         if (this._stack.length) {
-            // There's stuff in the stack. Push it.
+            // There's stuff in the stack. Use it.
             this._scoops--;
-//            this.push(this._stack.pop());
-            this._previousWrite = this._stack.pop();
-            this._contentListView.add(this._previousWrite, this._index);
+            var content = this._stack.pop();
+            this._written.push(content);
+            this._contentListView.add(content, this._index);
         }
 
         // If there was no data, or we just pushed the last bit,
